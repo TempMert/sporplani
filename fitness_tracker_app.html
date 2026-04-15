@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Kişisel Fitness Takibi</title>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+        :root {
+            /* Core Colors */
+            --bg-dark: #0f172a;
+            --card-bg: #1e293b;
+            --card-hover: #334155;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent-primary: #3b82f6;
+            --accent-success: #10b981;
+            --border-color: #334155;
+            --nav-bg: rgba(30, 41, 59, 0.9);
+            
+            /* Shadows & Effects */
+            --shadow-soft: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.15);
+            --shadow-nav: 0 -4px 20px rgba(0, 0, 0, 0.5);
+            --radius-lg: 20px;
+            --radius-md: 14px;
+            --transition-speed: 0.3s;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', -apple-system, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            padding-bottom: 90px; /* Space for bottom nav */
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 768px;
+            margin: 0 auto;
+            padding: 24px 16px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        header h1 {
+            font-size: 24px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+
+        /* TABS LOGIC */
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.4s ease forwards;
+        }
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* INFO CARDS (Top Section) */
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .info-card {
+            background: var(--card-bg);
+            border-radius: var(--radius-lg);
+            padding: 16px;
+            box-shadow: var(--shadow-soft);
+            border: 1px solid var(--border-color);
+        }
+        .info-card.full-width {
+            grid-column: span 2;
+        }
+
+        .info-card h3 {
+            font-size: 13px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .info-card .value {
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--text-main);
+        }
+        
+        .info-card .value span {
+            font-size: 16px;
+            color: var(--accent-success);
+        }
+
+        /* PROGRESS BARS */
+        .progress-wrap {
+            margin-top: 10px;
+        }
+        .progress-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+        .progress-track {
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-primary), #60a5fa);
+            border-radius: 4px;
+            width: 0%;
+            transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .fill-success {
+            background: linear-gradient(90deg, var(--accent-success), #34d399);
+        }
+
+        /* SECTION HEADERS */
+        .section-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin: 32px 0 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* ACCORDIONS (Days/Meals) */
+        .accordion {
+            background: var(--card-bg);
+            border-radius: var(--radius-lg);
+            margin-bottom: 12px;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-soft);
+            overflow: hidden;
+            transition: border-color var(--transition-speed);
+        }
+        
+        .accordion.completed {
+            border-color: rgba(16, 185, 129, 0.5);
+        }
+
+        .accordion-header {
+            padding: 16px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+            background: var(--card-bg);
+            z-index: 2;
+            position: relative;
+        }
+        
+        .accordion-header:active {
+            background: var(--card-hover);
+        }
+
+        .acc-title-wrap {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .acc-title {
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .acc-progress {
+            font-size: 13px;
+            font-weight: 700;
+            background: rgba(59, 130, 246, 0.15);
+            color: #60a5fa;
+            padding: 4px 10px;
+            border-radius: 12px;
+            transition: all var(--transition-speed);
+        }
+
+        .accordion.completed .acc-progress {
+            background: rgba(16, 185, 129, 0.15);
+            color: #34d399;
+        }
+
+        .accordion-body {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease-out;
+            background: rgba(15, 23, 42, 0.3);
+        }
+
+        .accordion-inner {
+            padding: 0 16px 16px;
+        }
+
+        /* TODO LIST */
+        .todo-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px;
+            background: var(--card-bg);
+            border-radius: var(--radius-md);
+            margin-top: 8px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: all 0.25s ease;
+        }
+
+        .todo-item:active {
+            transform: scale(0.98);
+        }
+
+        .todo-item.checked {
+            border-color: rgba(16, 185, 129, 0.3);
+            background: rgba(16, 185, 129, 0.05);
+        }
+
+        .todo-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .todo-name {
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--text-main);
+            transition: color 0.3s;
+        }
+        .todo-item.checked .todo-name {
+            color: var(--text-muted);
+            text-decoration: line-through;
+        }
+
+        /* CUSTOM CHECKBOX */
+        .custom-check {
+            width: 26px;
+            height: 26px;
+            border-radius: 8px;
+            border: 2px solid var(--text-muted);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .custom-check::after {
+            content: "✓";
+            position: absolute;
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+            opacity: 0;
+            transform: scale(0.5);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .todo-item.checked .custom-check {
+            background: var(--accent-success);
+            border-color: var(--accent-success);
+        }
+        .todo-item.checked .custom-check::after {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        /* CHARTS SECTION */
+        .chart-card {
+            background: var(--card-bg);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            box-shadow: var(--shadow-soft);
+            margin-bottom: 16px;
+            border: 1px solid var(--border-color);
+        }
+        .chart-container {
+            position: relative;
+            height: 220px;
+            width: 100%;
+            margin-top: 16px;
+        }
+
+        /* EXTRA FEATURES (Buttons) */
+        .actions-row {
+            display: flex;
+            gap: 12px;
+            margin-top: 30px;
+        }
+        .btn-reset {
+            flex: 1;
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            padding: 12px;
+            border-radius: var(--radius-md);
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+        .btn-reset:active {
+            background: rgba(239, 68, 68, 0.2);
+            transform: scale(0.97);
+        }
+
+        /* BOTTOM NAVIGATION */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: var(--nav-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-around;
+            padding: 12px 16px 24px; /* extra bottom padding for iOS home indicator */
+            box-shadow: var(--shadow-nav);
+            z-index: 1000;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            color: var(--text-muted);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            padding: 8px 32px;
+            border-radius: 16px;
+            transition: all 0.3s;
+        }
+
+        .nav-item.active {
+            color: var(--accent-primary);
+            background: rgba(59, 130, 246, 0.1);
+        }
+        
+        .nav-item span.icon {
+            font-size: 22px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        
+        <!-- ==================== WORKOUT TAB ==================== -->
+        <div id="workout-tab" class="tab-content active">
+            <header>
+                <h1>🏋️ Antrenman</h1>
+                <div style="width: 40px; height: 40px; background: var(--card-bg); border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border-color);">
+                    <span style="font-size: 20px;">👤</span>
+                </div>
+            </header>
+
+            <!-- Info Cards -->
+            <div class="info-grid">
+                <div class="info-card">
+                    <h3>Haftalık Plan</h3>
+                    <div class="value" id="wk-days-count">0/4 <span>gün</span></div>
+                </div>
+                <div class="info-card">
+                    <h3>Toplam Tamamlanan</h3>
+                    <div class="value" id="wk-total-percent">0%</div>
+                </div>
+                <div class="info-card full-width">
+                    <h3>Genel İlerleme</h3>
+                    <div class="progress-wrap">
+                        <div class="progress-labels">
+                            <span id="wk-main-label">Tamamlanan görevler</span>
+                            <span id="wk-main-percent">0%</span>
+                        </div>
+                        <div class="progress-track">
+                            <div class="progress-fill" id="wk-main-fill"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Weekly Plan Accordions -->
+            <h2 class="section-title">📅 Bu Haftanın Planı</h2>
+            <div id="workout-list"></div>
+
+            <!-- Charts -->
+            <h2 class="section-title">📊 Analitik</h2>
+            
+            <div class="chart-card">
+                <h3 style="font-size: 14px; color: var(--text-muted); margin-bottom: 4px;">Haftalık Tamamlama</h3>
+                <div class="chart-container">
+                    <canvas id="workoutBarChart"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-card">
+                <h3 style="font-size: 14px; color: var(--text-muted); margin-bottom: 4px;">Aylık Gelişim</h3>
+                <div class="chart-container">
+                    <canvas id="workoutLineChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Reset Actions -->
+            <div class="actions-row">
+                <button class="btn-reset" onclick="resetData('workout')">↺ Antrenmanları Sıfırla</button>
+            </div>
+        </div>
+
+        <!-- ==================== MEAL TAB ==================== -->
+        <div id="meal-tab" class="tab-content">
+            <header>
+                <h1>🍽️ Diyet Takibi</h1>
+            </header>
+
+            <!-- Dietary Logic -->
+            <div class="info-card" style="margin-bottom: 24px;">
+                <h3 style="display: flex; align-items: center; gap: 8px;">🍎 Günlük Düzen</h3>
+                <p style="font-size: 14px; color: var(--text-muted); margin-top: 8px; line-height: 1.5;">
+                    Bol su için ve kalori sınırlarınıza dikkat edin. Besin değeri yüksek öğünler tüketin. Bu plan tam sayım yerine porsiyon kontrolüne dayanır. Başarabilirsin! 💪
+                </p>
+                <div class="progress-wrap" style="margin-top: 16px;">
+                    <div class="progress-labels">
+                        <span id="ml-main-label">Günlük Diyet Skoru</span>
+                        <span id="ml-main-percent">0%</span>
+                    </div>
+                    <div class="progress-track" style="height: 12px; border-radius: 6px;">
+                        <div class="progress-fill fill-success" id="ml-main-fill" style="border-radius: 6px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Meals Accordions -->
+            <h2 class="section-title">🥗 Bugünün Öğünleri</h2>
+            <div id="meal-list"></div>
+
+            <!-- Charts -->
+            <h2 class="section-title">📊 Uyumluluk</h2>
+            
+            <div class="chart-card">
+                <h3 style="font-size: 14px; color: var(--text-muted); margin-bottom: 4px;">Öğün Tutarlılığı (Hafta)</h3>
+                <div class="chart-container">
+                    <canvas id="mealBarChart"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-card">
+                <h3 style="font-size: 14px; color: var(--text-muted); margin-bottom: 4px;">Aylık Diyet Uyumluluğu</h3>
+                <div class="chart-container">
+                    <canvas id="mealLineChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Reset Actions -->
+            <div class="actions-row">
+                <button class="btn-reset" onclick="resetData('meal')">↺ Öğünleri Sıfırla</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sticky Bottom Navigation -->
+    <div class="bottom-nav">
+        <div class="nav-item active" data-tab="workout">
+            <span class="icon">🏋️</span>
+            <span>Antrenman</span>
+        </div>
+        <div class="nav-item" data-tab="meal">
+            <span class="icon">🍽️</span>
+            <span>Öğünler</span>
+        </div>
+    </div>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // --- DATA STRUCTURES ---
+        const WORKOUT_PLAN = [
+            {
+                id: 'w-mon', day: 'Pazartesi', total: 5,
+                items: [
+                    { id: 'w1', icon: '💪', name: 'Dumbbell Curl', desc: '3 x 15 tekrar' },
+                    { id: 'w2', icon: '🏋️', name: 'Bench Press', desc: '3 x 12 tekrar' },
+                    { id: 'w3', icon: '🦵', name: 'Leg Extension', desc: '3 x 15 tekrar' },
+                    { id: 'w4', icon: '🧠', name: 'Crunch', desc: '3 x 10 tekrar' },
+                    { id: 'w5', icon: '⏱️', name: 'Plank', desc: '3 set (45sn)' }
+                ]
+            },
+            {
+                id: 'w-tue', day: 'Salı', total: 4,
+                items: [
+                    { id: 'w6', icon: '🦅', name: 'Lat Pulldown', desc: '3 x 12 tekrar' },
+                    { id: 'w7', icon: '🚣', name: 'Seated Row', desc: '3 x 10 tekrar' },
+                    { id: 'w8', icon: '🧱', name: 'Deadlift', desc: '3 x 8 tekrar' },
+                    { id: 'w9', icon: '🏃', name: 'Kardiyo', desc: '15 dk' }
+                ]
+            },
+            {
+                id: 'w-thu', day: 'Perşembe', total: 4,
+                items: [
+                    { id: 'w10', icon: '🦍', name: 'Şınav', desc: '3 x 15 tekrar' },
+                    { id: 'w11', icon: '🦾', name: 'Shoulder Press', desc: '3 x 12 tekrar' },
+                    { id: 'w12', icon: '🔥', name: 'Lateral Raise', desc: '3 x 15 tekrar' },
+                    { id: 'w13', icon: '🏃', name: 'Kardiyo', desc: '15 dk' }
+                ]
+            },
+            {
+                id: 'w-fri', day: 'Cuma', total: 4,
+                items: [
+                    { id: 'w14', icon: '🍑', name: 'Squat', desc: '3 x 12 tekrar' },
+                    { id: 'w15', icon: '🦵', name: 'Lunges', desc: '3 x 10 (bacak başı)' },
+                    { id: 'w16', icon: '🐄', name: 'Calf Raise', desc: '3 x 20 tekrar' },
+                    { id: 'w17', icon: '⏱️', name: 'Plank', desc: '3 set (45sn)' }
+                ]
+            }
+        ];
+
+        const MEAL_PLAN = [
+            {
+                id: 'm-brk', day: '🍳 Kahvaltı (12:00–13:00)', total: 7,
+                items: [
+                    { id: 'm1', icon: '🥚', name: '2-3 Yumurta', desc: 'Haşlanmış veya omlet' },
+                    { id: 'm2', icon: '🧀', name: 'Peynir (İsteğe bağlı)', desc: '1-2 dilim' },
+                    { id: 'm3', icon: '🫒', name: 'Zeytin', desc: '10-15 parça' },
+                    { id: 'm4', icon: '🥑', name: 'Avokado', desc: 'Yarım' },
+                    { id: 'm5', icon: '🥗', name: 'Yeşillik', desc: 'Taze sebzeler' },
+                    { id: 'm6', icon: '🥖', name: 'Ekşi Mayalı Ekmek', desc: '1 dilim' },
+                    { id: 'm7', icon: '🌰', name: 'Ceviz', desc: '2-3 adet' }
+                ]
+            },
+            {
+                id: 'm-snk', day: '🍎 Ara Öğün (15:30)', total: 3,
+                items: [
+                    { id: 'm8', icon: '🍏', name: 'Meyve', desc: 'Elma veya Muz' },
+                    { id: 'm9', icon: '🌰', name: 'Badem', desc: 'Bir avuç' },
+                    { id: 'm10', icon: '🌰', name: 'Ceviz', desc: '2-3 adet' }
+                ]
+            },
+            {
+                id: 'm-din', day: '🍽️ Akşam Yemeği', total: 3,
+                items: [
+                    { id: 'm11', icon: '🥩', name: 'Protein', desc: 'Et, Balık veya Tavuk' },
+                    { id: 'm12', icon: '🥗', name: 'Sebze', desc: 'Buharda veya salata' },
+                    { id: 'm13', icon: '🍚', name: 'Karbonhidrat', desc: 'Pirinç veya uygun karb.' }
+                ]
+            }
+        ];
+
+        // --- GLOBAL STATE ---
+        let charts = {};
+
+        // --- CORE FUNCTIONS ---
+
+        function initApp() {
+            renderList('workout-list', WORKOUT_PLAN, 'w');
+            renderList('meal-list', MEAL_PLAN, 'm');
+            
+            initTabs();
+            initCharts();
+            
+            updateWorkoutProgress();
+            updateMealProgress();
+        }
+
+        // Render HTML structure for Accordions & Todos
+        function renderList(containerId, planData, prefix) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+
+            planData.forEach(group => {
+                const groupHtml = `
+                    <div class="accordion" id="acc-${group.id}">
+                        <div class="accordion-header" onclick="toggleAccordion('body-${group.id}')">
+                            <div class="acc-title-wrap">
+                                <span class="acc-title">${group.day}</span>
+                            </div>
+                            <div class="acc-progress" id="prog-${group.id}">0/${group.total}</div>
+                        </div>
+                        <div class="accordion-body" id="body-${group.id}">
+                            <div class="accordion-inner">
+                                ${group.items.map(item => `
+                                    <div class="todo-item" id="item-${item.id}" onclick="toggleTodo('${item.id}', '${group.id}', '${prefix}')">
+                                        <div class="todo-info">
+                                            <span style="font-size: 20px;">${item.icon}</span>
+                                            <div style="display: flex; flex-direction: column;">
+                                                <span class="todo-name">${item.name}</span>
+                                                <span style="font-size: 11px; color: var(--text-muted); margin-top:2px;">${item.desc}</span>
+                                            </div>
+                                        </div>
+                                        <div class="custom-check"></div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', groupHtml);
+
+                // Re-hydrate checkboxes from LocalStorage
+                group.items.forEach(item => {
+                    const isChecked = localStorage.getItem(`fit_${item.id}`) === 'true';
+                    if (isChecked) {
+                        document.getElementById(`item-${item.id}`).classList.add('checked');
+                    }
+                });
+            });
+        }
+
+        // Accordion Animation Logic
+        function toggleAccordion(bodyId) {
+            const body = document.getElementById(bodyId);
+            if (body.style.maxHeight) {
+                body.style.maxHeight = null;
+            } else {
+                // Determine true height
+                body.style.maxHeight = body.scrollHeight + "px";
+            }
+        }
+
+        // Checkbox Toggle & Storage
+        function toggleTodo(itemId, groupId, prefix) {
+            const el = document.getElementById(`item-${itemId}`);
+            el.classList.toggle('checked');
+            
+            const isChecked = el.classList.contains('checked');
+            localStorage.setItem(`fit_${itemId}`, isChecked);
+
+            // Animate accordion height gracefully if contents changed size slightly
+            const body = document.getElementById(`body-${groupId}`);
+            if(body.style.maxHeight) {
+                body.style.maxHeight = body.scrollHeight + "px";
+            }
+
+            if (prefix === 'w') updateWorkoutProgress();
+            if (prefix === 'm') updateMealProgress();
+        }
+
+        // Update Workout UI & Charts
+        function updateWorkoutProgress() {
+            let totalChecked = 0;
+            let totalItems = 0;
+            let daysCompleted = 0;
+            const weekChartData = [0, 0, 0, 0]; // Mon, Tue, Thu, Fri
+
+            WORKOUT_PLAN.forEach((group, index) => {
+                let groupChecked = 0;
+                group.items.forEach(item => {
+                    totalItems++;
+                    if (localStorage.getItem(`fit_${item.id}`) === 'true') {
+                        groupChecked++;
+                        totalChecked++;
+                    }
+                });
+
+                // Update Accordion UI
+                const progTag = document.getElementById(`prog-${group.id}`);
+                const accContainer = document.getElementById(`acc-${group.id}`);
+                progTag.textContent = `${groupChecked}/${group.total}`;
+                
+                if (groupChecked === group.total) {
+                    accContainer.classList.add('completed');
+                    daysCompleted++;
+                } else {
+                    accContainer.classList.remove('completed');
+                }
+
+                weekChartData[index] = Math.round((groupChecked / group.total) * 100);
+            });
+
+            // Update Top Info Cards
+            const overallPercent = totalItems === 0 ? 0 : Math.round((totalChecked / totalItems) * 100);
+            document.getElementById('wk-days-count').innerHTML = `${daysCompleted}/${WORKOUT_PLAN.length} <span>days</span>`;
+            document.getElementById('wk-total-percent').textContent = overallPercent + '%';
+            document.getElementById('wk-main-percent').textContent = overallPercent + '%';
+            document.getElementById('wk-main-fill').style.width = overallPercent + '%';
+
+            // Update Charts Live
+            if (charts.wBar) {
+                charts.wBar.data.datasets[0].data = weekChartData;
+                charts.wBar.update();
+            }
+        }
+
+        // Update Meal UI & Charts
+        function updateMealProgress() {
+            let totalChecked = 0;
+            let totalItems = 0;
+            const weekChartData = [0, 0, 0];
+
+            MEAL_PLAN.forEach((group, index) => {
+                let groupChecked = 0;
+                group.items.forEach(item => {
+                    totalItems++;
+                    if (localStorage.getItem(`fit_${item.id}`) === 'true') {
+                        groupChecked++;
+                        totalChecked++;
+                    }
+                });
+
+                // Update Accordion UI
+                const progTag = document.getElementById(`prog-${group.id}`);
+                const accContainer = document.getElementById(`acc-${group.id}`);
+                progTag.textContent = `${groupChecked}/${group.total}`;
+                
+                if (groupChecked === group.total) {
+                    accContainer.classList.add('completed');
+                } else {
+                    accContainer.classList.remove('completed');
+                }
+
+                weekChartData[index] = Math.round((groupChecked / group.total) * 100);
+            });
+
+            // Update Top Card
+            const overallPercent = totalItems === 0 ? 0 : Math.round((totalChecked / totalItems) * 100);
+            document.getElementById('ml-main-percent').textContent = overallPercent + '%';
+            document.getElementById('ml-main-fill').style.width = overallPercent + '%';
+
+            // Update Live Chart
+            if (charts.mBar) {
+                charts.mBar.data.datasets[0].data = weekChartData;
+                charts.mBar.update();
+            }
+        }
+
+        // Data Reset Logic
+        function resetData(type) {
+            const trType = type === 'workout' ? 'Antrenman' : 'Öğün';
+            if(!confirm(`${trType} ilerlemenizi sıfırlamak istediğinize emin misiniz?`)) return;
+            
+            const planToLoop = type === 'workout' ? WORKOUT_PLAN : MEAL_PLAN;
+            planToLoop.forEach(group => {
+                group.items.forEach(item => {
+                    localStorage.removeItem(`fit_${item.id}`);
+                    const el = document.getElementById(`item-${item.id}`);
+                    if(el) el.classList.remove('checked');
+                });
+            });
+
+            if(type === 'workout') updateWorkoutProgress();
+            if(type === 'meal') updateMealProgress();
+        }
+
+        // Tab Switching Logic
+        function initTabs() {
+            const navItems = document.querySelectorAll('.nav-item');
+            const tabContents = document.querySelectorAll('.tab-content');
+
+            navItems.forEach(item => {
+                item.addEventListener('click', () => {
+                    navItems.forEach(n => n.classList.remove('active'));
+                    tabContents.forEach(t => t.classList.remove('active'));
+
+                    item.classList.add('active');
+                    const tabId = item.getAttribute('data-tab');
+                    document.getElementById(`${tabId}-tab`).classList.add('active');
+                });
+            });
+        }
+
+        // Chart.js Setup
+        function initCharts() {
+            Chart.defaults.color = '#94a3b8';
+            Chart.defaults.font.family = "'Inter', sans-serif";
+
+            // Workout Charts
+            const ctxWBar = document.getElementById('workoutBarChart').getContext('2d');
+            charts.wBar = new Chart(ctxWBar, {
+                type: 'bar',
+                data: {
+                    labels: ['Pzt', 'Sal', 'Per', 'Cum'],
+                    datasets: [{
+                        label: 'Tamamlama %',
+                        data: [0,0,0,0], // updated dynamically
+                        backgroundColor: '#3b82f6',
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { suggestedMax: 100, grid: { color: '#334155' } }, x: { grid: { display:false } } }
+                }
+            });
+
+            const ctxWLine = document.getElementById('workoutLineChart').getContext('2d');
+            charts.wLine = new Chart(ctxWLine, {
+                type: 'line',
+                data: {
+                    labels: ['1. Hafta', '2. Hafta', '3. Hafta', '4. Hafta'],
+                    datasets: [{
+                        label: 'Tutarlılık',
+                        data: [65, 80, 75, 95], // Static demo data for monthly
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { suggestedMax: 100, grid: { color: '#334155' } }, x: { grid: { display:false } } }
+                }
+            });
+
+            // Meal Charts
+            const ctxMBar = document.getElementById('mealBarChart').getContext('2d');
+            charts.mBar = new Chart(ctxMBar, {
+                type: 'bar',
+                data: {
+                    labels: ['Kahvaltı', 'Ara Öğün', 'Akşam'],
+                    datasets: [{
+                        label: 'Tamamlama %',
+                        data: [0,0,0],
+                        backgroundColor: '#10b981',
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { suggestedMax: 100, grid: { color: '#334155' } }, x: { grid: { display:false } } }
+                }
+            });
+
+            const ctxMLine = document.getElementById('mealLineChart').getContext('2d');
+            charts.mLine = new Chart(ctxMLine, {
+                type: 'line',
+                data: {
+                    labels: ['1. Hafta', '2. Hafta', '3. Hafta', '4. Hafta'],
+                    datasets: [{
+                        label: 'Uyumluluk',
+                        data: [85, 90, 88, 100], // Static demo data
+                        borderColor: '#60a5fa',
+                        backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { suggestedMax: 100, grid: { color: '#334155' } }, x: { grid: { display:false } } }
+                }
+            });
+        }
+
+        // Bootstrap App
+        initApp();
+    </script>
+</body>
+</html>
